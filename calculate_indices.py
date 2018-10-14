@@ -16,8 +16,13 @@ fileout_format = '/group_workspaces/jasmin2/primavera1/model_derived_data/climat
 
 years = range(1950, 2015)
 
-mohc_LM = {'institute':'MOHC', 'model':'HadGEM3-GC31-LM', 'label':'r1i3p1f1', 'grid':'gn'}
-mohc_HM = {'institute':'MOHC', 'model':'HadGEM3-GC31-HM', 'label':'r1i3p1f1', 'grid':'gn'}
+mohc_LM = {'institute':'MOHC', 'model':'HadGEM3-GC31-LM', 'label':'r1i1p1f1', 'grid':'gn'}
+mohc_LM_2 = {'institute':'MOHC', 'model':'HadGEM3-GC31-LM', 'label':'r1i2p1f1', 'grid':'gn'}
+mohc_LM_3 = {'institute':'MOHC', 'model':'HadGEM3-GC31-LM', 'label':'r1i3p1f1', 'grid':'gn'}
+mohc_HM = {'institute':'MOHC', 'model':'HadGEM3-GC31-HM', 'label':'r1i1p1f1', 'grid':'gn'}
+mohc_HM_2 = {'institute':'MOHC', 'model':'HadGEM3-GC31-HM', 'label':'r1i2p1f1', 'grid':'gn'}
+mohc_HM_3 = {'institute':'MOHC', 'model':'HadGEM3-GC31-HM', 'label':'r1i3p1f1', 'grid':'gn'}
+mohc_LM = {'institute':'MOHC', 'model':'HadGEM3-GC31-LM', 'label':'r1i1p1f1', 'grid':'gn'}
 cm61_LR = {'institute':'CNRM-CERFACS', 'model':'CNRM-CM6-1', 'label':'r21i1p1f2', 'grid':'gr'}
 ecmwf_LR = {'institute':'ECMWF', 'model':'ECMWF-IFS-LR', 'label':'r1i1p1f1', 'grid':'gr'}
 
@@ -25,7 +30,7 @@ def define_indices():
     '''
     Define climate extreme indices with names consistent with ccclim
     '''
-    global index1, index2, index3, index4, index5, index6, index7, index8, index9, index16, index17, index18, index19, index20, index21, index23, index24, index27, index31, index31_params, index32_3hr, index31_params_3hr, index32_6hr, index31_params_6hr
+    global index1, index2, index3, index4, index5, index6, index7, index8, index9, index16, index17, index18, index19, index20, index21, index23, index24, index27, index31, index31_params, index32_3hr, index31_params_3hr, index32_6hr, index31_params_6hr, index33, index33_params
     index1 = {'name':'FD', 'var':'tasmin', 'period':'year', 'var_period':'day'}
     index2 = {'name':'SU', 'var':'tasmax', 'period':'year', 'var_period':'day'}
     index3 = {'name':'ID', 'var':'tasmax', 'period':'year', 'var_period':'day'}
@@ -50,7 +55,7 @@ def define_indices():
                     'calc_operation': 'run_mean',
                     'extreme_mode': 'max',
                     'window_width': 3}
-    index31 = {'name':'TX3x', 'var': 'tasmax', 'period':'month', 'var_period':'day', 'long_name':'Maximum 3-day running mean maximum Near-Surface Air Temperature'}
+    index31 = {'name':'TX3x', 'var': 'tasmax', 'period':'month', 'var_period':'day', 'long_name':'Maximum 3-day running mean maximum Near-Surface Air Temperature', 'params':index31_params}
 
     # this one for CNRM-CERFACS, EC-Earth-Consortium, MOHC
     # use 2x3hr periods
@@ -66,7 +71,13 @@ def define_indices():
                     'extreme_mode': 'max'}
     index32_6hr = {'name':'RX6hour', 'var': 'pr', 'period':'month', 'var_period':'Prim6hr', 'long_name':'Maximum 6-hour running mean maximum precipitation (from 1x6hr period)'}
 
-    indices = [index17, index31]
+    index33_params = {'indice_name': 'RX3hour',
+                    'calc_operation': 'max',
+                    'extreme_mode': 'max'}
+    index33 = {'name':'RX3hour', 'var': 'pr', 'period':'month', 'var_period':'3hr', 'long_name':'Maximum 3-hour mean precipitation', 'params':index33_params}
+
+    #indices = [index7, index8, index9, index18, index23]
+    indices = [index17, index18, index23, index33]
 
     return indices
 
@@ -106,7 +117,7 @@ def add_model_metadata(f_ref, fname):
 
 if __name__ == '__main__':
 
-    runs = [mohc_LM, mohc_HM]
+    runs = [mohc_LM, mohc_HM, mohc_LM_2, mohc_HM_2, mohc_LM_3, mohc_HM_3 ]
     indices = define_indices()
 
     for run in runs:
@@ -117,20 +128,22 @@ if __name__ == '__main__':
             for year in years:
                 fname = file_format.format(run['institute'], run['model'], run['label'], index['var_period'], index_var, run['grid'], index_var, index['var_period'], run['grid'], str(year))
                 files = sorted(glob.glob(fname))
+                if len(files) == 0:
+                    print 'searching, no files ',fname
                 print files[0]
                 fname_out = os.path.basename(files[0])
                 fname_out = fname_out.replace(index['var_period'], index_period)
-                fname_out = fname_out.replace(index_var, index_name)
+                fname_out = fname_out.replace(index_var, index_name, 1)
                 f_out = fileout_format.format(run['institute'], run['model'], run['label'], index_period, index_name, run['grid'], 'latest', fname_out)
                 if not os.path.exists(os.path.dirname(f_out)):
                     os.makedirs(os.path.dirname(f_out))
-                if not index == index31:
-                    icclim.indice(indice_name=index_name, in_files=files, var_name=index_var, slice_mode = index_period, out_file=f_out)
-                else:
-                    icclim.indice(user_indice=index31_params, in_files=files, var_name=index_var, slice_mode = index_period, out_file=f_out)
+                if index == index31 or index == index33:
+                    icclim.indice(user_indice=index['params'], in_files=files, var_name=index_var, slice_mode = index_period, out_file=f_out)
                 # need to edit the long_name to make it consistent with this user variable
                     cmd = 'ncatted -O -h -a long_name,'+index_name+',o,c,"'+index['long_name']+'" '+f_out
                     os.system(cmd)
+                else:
+                    icclim.indice(indice_name=index_name, in_files=files, var_name=index_var, slice_mode = index_period, out_file=f_out)
 
                 add_model_metadata(files[0], f_out)
                 cmd = 'nccopy -k 4 -d 3 '+f_out+' '+f_out+'.tmp.nc4'
